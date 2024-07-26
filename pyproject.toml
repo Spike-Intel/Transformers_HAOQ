@@ -1,0 +1,27 @@
+[project]
+name = "HAOQ"
+version = "0.0.1"
+description = "Implementation of \"Hierarchical Attention with Orthogonal Queries\""
+readme = "README.md" # Optional
+requires-python = ">=3.11"
+# license = {file = "LICENSE.txt"}
+
+keywords = ["machine learning", "attention", "transformers"]
+
+authors = []
+
+maintainers = [
+  { name = "trefecta", email = "tre.tomaszewski@gmail.com" }
+]
+
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/Spike-Intel/Transformers_HAOQ.git"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

@@ -32,6 +32,9 @@ class OrthogonalQueryDecomposition(nn.Module):
         nn.init.orthogonal_(self.proj_local)
         nn.init.orthogonal_(self.proj_global)
 
+        # intialize orthoganality
+        self.orthogonalize()
+
     def orthogonalize(self):
         # QR decomposition
         q_local, _ = torch.linalg.qr(self.proj_local)
@@ -48,7 +51,7 @@ class OrthogonalQueryDecomposition(nn.Module):
         # NOTE: this is not necessary during inference
         # this will occur during the first pass, and then every `update_freq` steps
         if self.training:
-            if self.global_step % self.update_freq == 0:
+            if self.global_step % self.update_freq == 0 and self.global_step > 0:
                 self.orthogonalize()
 
             self.global_step += 1

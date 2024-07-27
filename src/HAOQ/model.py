@@ -93,7 +93,10 @@ class HierarchicalAttention(nn.Module):
         for i in range(0, queries.size(1), window_size):
             boundary = min(i+window_size, seq_len) # handle the end of the sequence
             window = queries[:, i:boundary, :]
-            attn_out, _ = attn(window, window, window)
+
+            mask = torch.ones(window.size(1), window.size(1), device=window.device).triu(1).bool()
+
+            attn_out, _ = attn(window, window, window, attn_mask=mask)
             out.append(attn_out)
 
         return torch.cat(out, dim=1)

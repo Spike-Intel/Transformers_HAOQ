@@ -192,9 +192,9 @@ class Block(nn.Module):
         # x size: [batch_size, seq_len, d_model]
         residual = x
         attn_output = self.attn(self.ln_1(residual))
-        residual += attn_output
+        residual = residual + attn_output
         mlp_output = self.mlp(self.ln_2(residual))
-        residual += mlp_output
+        residual = residual + mlp_output
         return residual
 
 

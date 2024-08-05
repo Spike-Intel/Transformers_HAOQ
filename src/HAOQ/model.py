@@ -114,9 +114,12 @@ class HierarchicalAttention(nn.Module):
         # This allows us to process all windows in parallel
         queries_padded = queries_padded.view(num_windows * batch_size, window_size, d_model)
 
+        # Create causal mask for the attention mechanism
+        mask = torch.triu(torch.ones(window_size, window_size), diagonal=1).to(queries.device)
+
         # Process attention for each window
         # The attention is "batch_first", so expects a [batch_size, seq_len, d_model] input
-        attn_out, _ = attn(queries_padded, queries_padded, queries_padded)
+        attn_out, _ = attn(queries_padded, queries_padded, queries_padded, attn_mask=mask)
 
         # Unfold the batch dimension back into the sequence dimension
         # The attention mechanism may have changed the memory layout of the tensor,

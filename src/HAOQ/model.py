@@ -86,20 +86,47 @@ class HierarchicalAttention(nn.Module):
         self.global_attn_window = cfg.global_attn_window
 
     def sliding_window_attention(self, queries, attn, window_size):
-        seq_len = queries.size(1)
+        # Batch process the input during attention calculation
+        # This is more efficient than processing each window individually using a loop
 
-        out = []
-        # slide over the sequence with a window size
-        for i in range(0, queries.size(1), window_size):
-            boundary = min(i+window_size, seq_len) # handle the end of the sequence
-            window = queries[:, i:boundary, :]
+        batch_size, seq_len, d_model = queries.shape
 
-            mask = torch.ones(window.size(1), window.size(1), device=window.device).triu(1).bool()
+        # Get required number of windows based on the sequence length and window size
+        num_windows = (seq_len + window_size - 1) // window_size
+        # for example: for `seq_len = 10` and `window_size = 3`
+        # num_windows = 10 + 3 - 1 // 3 = 4
 
-            attn_out, _ = attn(window, window, window, attn_mask=mask)
-            out.append(attn_out)
+        # The last window likely has a sequence smaller than the window size. Calculate additional padding required.
+        # for example: for `seq_len = 10`, `window_size = 3`, 'num_windows = 4'
+        # `num_windows * window_size` = 12
+        # but the sequence length is 10, so we need to pad the last window with 2 zeros
+        # padding = 4 * 3 - 10 = 12 - 10 = 2
+        padding_size = num_windows * window_size - seq_len
 
-        return torch.cat(out, dim=1)
+        # If padding is needed to make the windows of equal size, add zeros to the end of the sequence
+        if padding_size > 0:
+            queries_padded = F.pad(queries, (0, 0, 0, padding_size)).to(queries.device)
+        else:
+            # don't do anything if no padding is needed
+            queries_padded = queries
+
+        # Fold each window into the batch dimension
+        # This allows us to process all windows in parallel
+        queries_padded = queries_padded.view(num_windows * batch_size, window_size, d_model)
+
+        # Process attention for each window
+        # The attention is "batch_first", so expects a [batch_size, seq_len, d_model] input
+        attn_out, _ = attn(queries_padded, queries_padded, queries_padded)
+
+        # Unfold the batch dimension back into the sequence dimension
+        # The attention mechanism may have changed the memory layout of the tensor,
+        # so we need to call `contiguous` before reshaping
+        attn_out = attn_out.contiguous().view(batch_size, num_windows * window_size, d_model)
+
+        # Now, get rid of the padding by enforcing the original sequence length
+        attn_out = attn_out[:, :seq_len, :]
+
+        return attn_out
 
     def forward(self, lqs, gqs):
         # lqs size: (batch_size, seq_len, d_model)
